@@ -29,8 +29,8 @@ if version < (2, 7, 0):
 setup(
     name="translationrecorder",
     version=__version__,
-    description=("Wraps gettext translation functions, "
-                 "recording messages and exporting them to .pot-files."),
+    description=("Records gettext translation messages and "
+                 "synchronizes to message catalogs."),
     long_description="\n\n".join((README, CHANGES)),
     classifiers=[
        "Development Status :: 4 - Beta",

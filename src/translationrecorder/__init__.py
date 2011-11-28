@@ -3,6 +3,7 @@ import logging
 import datetime
 import patches
 import atexit
+import glob
 
 logger = logging.getLogger("translationrecorder")
 global_handlers = {}
@@ -29,6 +30,10 @@ except ImportError:
 
 def quote(string):
     return string.replace('"', '\"').replace('\n', '\\n')
+
+
+def unquote(string):
+    return string.strip('"').replace('\\n', '\n')
 
 
 def safe_encode(string, encoding='utf-8'):
@@ -85,7 +90,64 @@ def write_header(f, header, value):
     f.write('"%s: %s\\n"\n' % (header, value))
 
 
-def recording_translator(translator, path):
+def load_language(path, language, catalog):
+    default = location = msgid = None
+
+    processed = 0
+    with open(path, 'r') as f:
+        for line in f:
+            if line.startswith('#.'):
+                default = unquote(line.split('Default:', 1)[1].strip())
+
+            if line.startswith('#:'):
+                location = line[2:].strip()
+
+            if line.startswith('msgid'):
+                msgid = unquote(line[5:].strip())
+
+            if line.startswith('msgstr'):
+                msgstr = unquote(line[6:].strip())
+
+                catalog[msgid, language] = (default, location, msgstr)
+                processed += 1
+                default = location = msgid = None
+
+    return processed
+
+
+def glob_domains(path):
+    for pot_path in glob.iglob("%s/*.po*" % path):
+        domain = os.path.splitext(os.path.basename(pot_path))[0]
+
+        if domain == 'DEFAULT':
+            domain = None
+
+        yield pot_path, domain
+
+
+def load_catalogs(path, domains, language=None):
+    # Templates
+    for pot_path, domain in glob_domains(path):
+        catalog = domains.setdefault(domain, {})
+        count = load_language(pot_path, language, catalog)
+
+        if language is None:
+            info = ''
+        else:
+            info = ' (%s)' % language
+
+        logger.info("processed %d definitions for '%s'%s." % (
+            count, domain or 'DEFAULT', info
+            ))
+
+    # Languages
+    for language in os.listdir(path):
+        messages_path = os.path.join(path, language, 'LC_MESSAGES')
+        if os.path.exists(messages_path):
+            load_catalogs(messages_path, domains, language)
+
+
+class Recorder(object):
     """Proxies translation attempts to the provided ``translator`` and
     records them in ``<domain>.pot`` translation templates on disk
     when the configured signal is fired.
@@ -94,63 +156,73 @@ def recording_translator(translator, path):
     directory named 'locales'.
     """
 
-    domains = global_handlers.get(path)
-    if domains is None:
-        domains = global_handlers[path] = {}
+    def __init__(self, translator, path):
+        self.translator = translator
 
-        def handler(logger=logger, domains=domains, path=path):
-            count = len(domains)
-            if not count:
-                return
+        domains = global_handlers.get(path)
+        if domains is None:
+            domains = global_handlers[path] = {}
 
-            logger.info("Writing out .pot files for %d domains..." % count)
+            load_catalogs(path, domains)
 
-            count = 0
-            for domain, catalog in domains.items():
-                if not catalog:
-                    continue
+            def handler(logger=logger, domains=domains, path=path):
+                count = len(domains)
+                if not count:
+                    return
 
-                if domain is None:
-                    domain = "DEFAULT"
+                logger.info("Writing out .pot files for %d domains..." % count)
 
-                messages = {}
-                languages = {}
+                count = 0
+                for domain, catalog in domains.items():
+                    if not catalog:
+                        continue
 
-                for (msgid, language), translation in catalog.items():
-                    default, location, msgstr = translation
-                    messages.setdefault(msgid, (default, location, ""))
+                    if domain is None:
+                        domain = "DEFAULT"
 
-                    if language:
-                        languages.setdefault(language, {})[msgid] = translation
+                    messages = {}
+                    languages = {}
 
-                catalogs = [(None, messages)]
-                catalogs.extend(languages.items())
+                    for (msgid, language), translation in catalog.items():
+                        default, location, msgstr = translation
+                        messages.setdefault(msgid, (default, location, ""))
 
-                for language, messages in catalogs:
-                    try:
-                        write_pot(path, domain, messages, language)
-                    except IOError, exc:
-                        logger.warn(exc)
-                    except os.error, exc:
-                        logger.warn(exc)
-                    else:
-                        count += 1
+                        if language:
+                            languages.setdefault(language, {})[msgid] = (
+                                translation)
 
-            logger.info("Wrote %d translation file(s) at %s." % (count, path))
+                    catalogs = [(None, messages)]
+                    catalogs.extend(languages.items())
 
-        atexit.register(handler)
+                    for language, messages in catalogs:
+                        try:
+                            write_pot(path, domain, messages, language)
+                        except IOError, exc:
+                            logger.warn(exc)
+                        except os.error, exc:
+                            logger.warn(exc)
+                        else:
+                            count += 1
 
-    def translate(msgid, domain=None, mapping=None, context=None,
+                logger.info("Wrote %d translation file(s) at %s." % (
+                    count, path
+                    ))
+
+            atexit.register(handler)
+
+        self.domains = domains
+
+    def __call__(self, msgid, domain=None, mapping=None, context=None,
                  target_language=None, default=None):
-        translation = translator(
+        translation = self.translator(
             msgid, domain=domain, mapping=mapping, context=context,
             target_language=target_language, default=default
             )
 
         if msgid:
-            catalog = domains.get(domain)
+            catalog = self.domains.get(domain)
             if catalog is None:
-                catalog = domains[domain] = {}
+                catalog = self.domains[domain] = {}
 
             catalog[safe_encode(msgid), target_language] = (
                 safe_encode(default), None, safe_encode(translation)
@@ -158,7 +230,6 @@ def recording_translator(translator, path):
 
         return translation
 
-    return translate
 
 path = os.environ.get('RECORD_TRANSLATIONS')
 if path is not None:
@@ -169,11 +240,11 @@ if path is not None:
     else:
         patched = 0
 
-        if patches.patch_zope(path, recording_translator):
+        if patches.patch_zope(path, Recorder):
             logger.info("patched zope.i18n.")
             patched += 1
 
-        if patches.patch_translationstring(path, recording_translator):
+        if patches.patch_translationstring(path, Recorder):
             logger.info("patched translationstring.")
             patched += 1
 
