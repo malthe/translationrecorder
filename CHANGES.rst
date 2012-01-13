@@ -1,7 +1,12 @@
 Changes
 =======
 
-In next release ...
+1.0.1 (2012-01-13)
+------------------
+
+- Fixed issue where generated .po-files would result in a syntax error
+  on compilation using ``pythongettext`` due to a missing initial
+  dummy message translation.
 
 - Patch the translation domain instead of the (higher-level)
   global translation function.
