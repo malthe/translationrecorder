@@ -59,6 +59,9 @@ def write_pot(path, domain, messages, language=None, encoding="utf-8"):
     time = datetime.datetime.now()
 
     with open(filename, 'w') as f:
+        f.write('msgid ""\n')
+        f.write('msgstr ""\n')
+
         write_header(f, "Project-Id-Version", "PACKAGE VERSION")
         write_header(f, "POT-Creation-Date", time.isoformat())
         write_header(f, "PO-Revision-Date", "YEAR-MO-DA HO:MI +ZONE")
