@@ -212,23 +212,23 @@ class Recorder(object):
 
         self.domains = domains
 
-    def __call__(self, msgid, domain=None, mapping=None, context=None,
-                 target_language=None, default=None):
-        translation = self.translator(
-            msgid, domain=domain, mapping=mapping, context=context,
-            target_language=target_language, default=default
-            )
+    def __call__(self, msgid, *args, **kwargs):
+        value = self.translator(msgid, *args, **kwargs)
 
         if msgid:
-            catalog = self.domains.get(domain)
-            if catalog is None:
-                catalog = self.domains[domain] = {}
+            self.register(value, msgid, *args, **kwargs)
 
-            catalog[safe_encode(msgid), target_language] = (
-                safe_encode(default), None, safe_encode(translation)
-                )
+        return value
 
-        return translation
+    def register(self, value, msgid, domain=None, mapping=None,
+                 context=None, target_language=None, default=None):
+        catalog = self.domains.get(domain)
+        if catalog is None:
+            catalog = self.domains[domain] = {}
+
+        catalog[safe_encode(msgid), target_language] = (
+            safe_encode(default), None, safe_encode(value)
+            )
 
 
 path = os.environ.get('RECORD_TRANSLATIONS')
