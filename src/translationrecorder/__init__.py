@@ -29,11 +29,11 @@ except ImportError:
 
 
 def quote(string):
-    return string.replace('"', '\"').replace('\n', '\\n')
+    return string.replace('"', '\\"').replace('\n', '\\n')
 
 
 def unquote(string):
-    return string.strip('"').replace('\\n', '\n')
+    return string.strip('"').replace('\\"', '"').replace('\\n', '\n')
 
 
 def safe_encode(string, encoding='utf-8'):
