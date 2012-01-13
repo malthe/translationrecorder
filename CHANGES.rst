@@ -1,7 +1,8 @@
 Changes
 =======
 
-In next release ...
+1.0.2 (2012-01-13)
+------------------
 
 - Fixed issue where a quote appearing in a message id or translation
   would corrupt on save.
