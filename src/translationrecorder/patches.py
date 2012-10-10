@@ -19,6 +19,8 @@ def patch_zope(path, wrapper):
             self, msgid, mapping, context, target_language, default
             )
 
+        real_value = value
+
         # Register with utility; note that arguments appear in a
         # slightly different order.
         if mapping is not None:
@@ -29,7 +31,7 @@ def patch_zope(path, wrapper):
             value, msgid, domain, mapping, context, target_language, default
             )
 
-        return value
+        return real_value
 
     TranslationDomain.translate = wraps(TranslationDomain.translate)(translate)
 
