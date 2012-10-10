@@ -21,6 +21,10 @@ def patch_zope(path, wrapper):
 
         # Register with utility; note that arguments appear in a
         # slightly different order.
+        if mapping is not None:
+            for key, string in mapping.items():
+                value = value.replace(string, '${%s}' % key)
+
         recorder.register(
             value, msgid, domain, mapping, context, target_language, default
             )

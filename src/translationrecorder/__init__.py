@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 import datetime
 import patches
@@ -28,12 +29,19 @@ except ImportError:
         return ""
 
 
+re_strip = re.compile(r'\s+')
+
+
 def quote(string):
     return string.replace('"', '\\"').replace('\n', '\\n')
 
 
 def unquote(string):
     return string.strip('"').replace('\\"', '"').replace('\\n', '\n')
+
+
+def strip(string):
+    return re_strip.sub(' ', string).strip()
 
 
 def safe_encode(string, encoding='utf-8'):
@@ -46,7 +54,7 @@ def safe_encode(string, encoding='utf-8'):
     return string
 
 
-def write_pot(path, domain, messages, language=None, encoding="utf-8"):
+def write_catalog(path, domain, messages, language=None, encoding="utf-8"):
     if language is None:
         filename = os.path.join(path, "%s.pot" % domain)
     else:
@@ -79,6 +87,9 @@ def write_pot(path, domain, messages, language=None, encoding="utf-8"):
         f.write('\n')
 
         for msgid, (default, location, msgstr) in sorted(messages.items()):
+            if language and msgid == default:
+                continue
+
             if default and default != msgid:
                 f.write('#. Default: "%s"\n' % quote(default))
 
@@ -86,7 +97,8 @@ def write_pot(path, domain, messages, language=None, encoding="utf-8"):
                 f.write('#: %s\n' % quote(location))
 
             f.write('msgid "%s"\n' % quote(msgid))
-            f.write('msgstr "%s"\n\n' % quote(msgstr))
+
+            f.write('msgstr "%s"\n\n' % quote(strip(msgstr)))
 
 
 def write_header(f, header, value):
@@ -191,15 +203,19 @@ class Recorder(object):
                         messages.setdefault(msgid, (default, location, ""))
 
                         if language:
+                            if default == msgstr:
+                                msgstr = ""
+
                             languages.setdefault(language, {})[msgid] = (
-                                translation)
+                                default, location, msgstr
+                            )
 
                     catalogs = [(None, messages)]
                     catalogs.extend(languages.items())
 
                     for language, messages in catalogs:
                         try:
-                            write_pot(path, domain, messages, language)
+                            write_catalog(path, domain, messages, language)
                         except IOError, exc:
                             logger.warn(exc)
                         except os.error, exc:
@@ -209,7 +225,7 @@ class Recorder(object):
 
                 logger.info("Wrote %d translation file(s) at %s." % (
                     count, path
-                    ))
+                ))
 
             atexit.register(handler)
 
@@ -231,7 +247,7 @@ class Recorder(object):
 
         catalog[safe_encode(msgid), target_language] = (
             safe_encode(default), None, safe_encode(value)
-            )
+        )
 
 
 path = os.environ.get('RECORD_TRANSLATIONS')
