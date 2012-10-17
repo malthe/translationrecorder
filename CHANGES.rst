@@ -1,6 +1,14 @@
 Changes
 =======
 
+In next release ...
+
+- Fixed an issue where a translation would always appear with a
+  default text, even when not present in catalog.
+
+- Fixed an issue where a message with a mapping would not get properly
+  decoded into a message id.
+
 1.0.2 (2012-01-13)
 ------------------
 
