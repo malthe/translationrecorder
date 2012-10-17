@@ -1,7 +1,8 @@
 Changes
 =======
 
-In next release ...
+1.0.3 (2012-10-17)
+------------------
 
 - Fixed an issue where a translation would always appear with a
   default text, even when not present in catalog.
