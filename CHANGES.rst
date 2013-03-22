@@ -4,7 +4,7 @@ Changes
 1.0.4 (Unreleased)
 ------------------
 
-
+- Add hook for importing via Pyramid's `includes` directive.
 
 1.0.3 (2012-10-17)
 ------------------
