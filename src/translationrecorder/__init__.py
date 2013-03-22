@@ -250,6 +250,11 @@ class Recorder(object):
         )
 
 
+def includeme(config):
+    """ this enables loading via `pyramid_includes` """
+    pass
+
+
 path = os.environ.get('RECORD_TRANSLATIONS')
 if path is not None:
     path = os.path.abspath(path)
