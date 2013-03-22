@@ -64,14 +64,14 @@ def write_catalog(path, domain, messages, language=None, encoding="utf-8"):
 
         filename = os.path.join(language_path, "%s.po" % domain)
 
-    time = datetime.datetime.now()
+    time = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M+0000')
 
     with open(filename, 'w') as f:
         f.write('msgid ""\n')
         f.write('msgstr ""\n')
 
         write_header(f, "Project-Id-Version", "PACKAGE VERSION")
-        write_header(f, "POT-Creation-Date", time.isoformat())
+        write_header(f, "POT-Creation-Date", time)
         write_header(f, "PO-Revision-Date", "YEAR-MO-DA HO:MI +ZONE")
         write_header(f, "Last-Translator", "FULL NAME <EMAIL@ADDRESS>")
         write_header(f, "Language-Team", "LANGUAGE <LL@li.org>")
