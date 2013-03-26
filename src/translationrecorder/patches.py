@@ -47,8 +47,8 @@ def patch_translationstring(path, wrapper):
     factory = translationstring.Translator
 
     @wraps(factory)
-    def Translator(**kwargs):
-        translator = factory(**kwargs)
+    def Translator(*args, **kwargs):
+        translator = factory(*args, **kwargs)
         return wrapper(translator, path)
 
     translationstring.Translator = Translator
