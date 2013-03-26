@@ -53,4 +53,15 @@ def patch_translationstring(path, wrapper):
 
     translationstring.Translator = Translator
 
+    chameleon_factory = translationstring.ChameleonTranslate
+
+    @wraps(factory)
+    def ChameleonTranslate(translator):
+        translate = chameleon_factory(translator)
+        if translator is not None:
+            translate = wrapper(translate, path)
+        return translate
+
+    translationstring.ChameleonTranslate = ChameleonTranslate
+
     return True
